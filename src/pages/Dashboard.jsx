@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import useAuthStore from '../store/useAuthStore'
+import { calcularIndicadores } from '../lib/calculos'
 
 export default function Dashboard() {
   const { user } = useAuthStore()
@@ -11,15 +12,10 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       const { data: perfilData } = await supabase
-        .from('perfiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+        .from('perfiles').select('*').eq('id', user.id).single()
 
       const { data: animalesData } = await supabase
-        .from('animales')
-        .select('*')
-        .eq('usuario_id', user.id)
+        .from('animales').select('*').eq('usuario_id', user.id)
 
       setPerfil(perfilData)
       setAnimales(animalesData || [])
@@ -28,18 +24,10 @@ export default function Dashboard() {
     fetchData()
   }, [])
 
-  const calcularEstado = (animal) => {
-    const pesoIdeal = animal.peso_ingreso * 1.35
-    const rendimiento = (animal.peso_actual / pesoIdeal) * 100
-    if (rendimiento >= 90) return 'ok'
-    if (rendimiento >= 80) return 'warn'
-    return 'danger'
-  }
-
-  const buenos = animales.filter(a => calcularEstado(a) === 'ok').length
-  const atencion = animales.filter(a => calcularEstado(a) === 'warn').length
-  const criticos = animales.filter(a => calcularEstado(a) === 'danger').length
-  const alertas = animales.filter(a => calcularEstado(a) !== 'ok')
+  const buenos = animales.filter(a => calcularIndicadores(a).estado === 'ok').length
+  const atencion = animales.filter(a => calcularIndicadores(a).estado === 'warn').length
+  const criticos = animales.filter(a => calcularIndicadores(a).estado === 'danger').length
+  const alertas = animales.filter(a => calcularIndicadores(a).estado !== 'ok')
 
   if (loading) return (
     <div className="flex-1 flex items-center justify-center">
@@ -49,7 +37,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex-1 flex flex-col pb-16">
-      {/* Topbar */}
       <div className="bg-[#1a3a6b] px-4 py-3 flex items-center justify-between">
         <div>
           <p className="text-white font-medium">Hola, {perfil?.nombre?.split(' ')[0] ?? 'Ganadero'}</p>
@@ -61,7 +48,6 @@ export default function Dashboard() {
       </div>
 
       <div className="flex-1 p-4 flex flex-col gap-4">
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-green-50 rounded-xl p-3">
             <p className="text-2xl font-medium text-[#2d6a1f]">{buenos}</p>
@@ -77,7 +63,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Alertas */}
         <div>
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Alertas del día</p>
           {alertas.length === 0 ? (
@@ -88,15 +73,15 @@ export default function Dashboard() {
           ) : (
             <div className="flex flex-col gap-2">
               {alertas.map(animal => {
-                const estado = calcularEstado(animal)
+                const { estado, recomendacion } = calcularIndicadores(animal)
                 return (
                   <div key={animal.id} className="flex items-start gap-3 py-2 border-b border-gray-100">
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0 ${estado === 'danger' ? 'bg-red-50' : 'bg-amber-50'}`}>
                       {estado === 'danger' ? '🔴' : '🟡'}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{animal.raza} — {estado === 'danger' ? 'Bajo peso crítico' : 'Requiere atención'}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{animal.lote} · Potrero {animal.potrero}</p>
+                      <p className="text-sm font-medium text-gray-800">{animal.raza} — {recomendacion}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Lote {animal.lote} · Potrero {animal.potrero}</p>
                     </div>
                   </div>
                 )
@@ -105,7 +90,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* CTA si no hay animales */}
         {animales.length === 0 && (
           <div className="bg-[#e6ecf5] rounded-xl p-4 text-center mt-2">
             <p className="text-sm text-[#1a3a6b] font-medium">No tienes animales aún</p>

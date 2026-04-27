@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import useAuthStore from '../store/useAuthStore'
+import { calcularIndicadores } from '../lib/calculos'
 
 export default function Animales() {
   const { user } = useAuthStore()
@@ -23,15 +24,12 @@ export default function Animales() {
     fetchAnimales()
   }, [])
 
-  const calcularIndicadores = (animal) => {
-    const pesoIdeal = animal.peso_ingreso * 1.35
-    const rendimiento = ((animal.peso_actual / pesoIdeal) * 100).toFixed(1)
-    const estado = rendimiento >= 90 ? 'ok' : rendimiento >= 80 ? 'warn' : 'danger'
-    return { pesoIdeal: pesoIdeal.toFixed(1), rendimiento, estado }
-  }
-
   const lotes = ['Todos', ...new Set(animales.map(a => a.lote).filter(Boolean))]
-  const filtrados = filtro === 'Todos' ? animales : filtro === 'Alertas' ? animales.filter(a => calcularIndicadores(a).estado !== 'ok') : animales.filter(a => a.lote === filtro)
+  const filtrados = filtro === 'Todos'
+    ? animales
+    : filtro === 'Alertas'
+    ? animales.filter(a => calcularIndicadores(a).estado !== 'ok')
+    : animales.filter(a => a.lote === filtro)
 
   if (loading) return (
     <div className="flex-1 flex items-center justify-center">
@@ -41,26 +39,21 @@ export default function Animales() {
 
   return (
     <div className="flex-1 flex flex-col pb-16">
-      {/* Topbar */}
       <div className="bg-[#1a3a6b] px-4 py-3 flex items-center justify-between">
         <p className="text-white font-medium">Mis animales</p>
         <button onClick={() => navigate('/agregar')} className="text-[#2a9fd6] text-sm font-medium">+ Agregar</button>
       </div>
 
       <div className="flex-1 p-4 flex flex-col gap-3 overflow-y-auto">
-        {/* Filtros */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           {[...lotes, 'Alertas'].map(f => (
-            <button
-              key={f}
-              onClick={() => setFiltro(f)}
+            <button key={f} onClick={() => setFiltro(f)}
               className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap border transition-colors ${filtro === f ? 'bg-[#1a3a6b] text-white border-[#1a3a6b]' : 'bg-white text-gray-500 border-gray-200'}`}>
               {f}
             </button>
           ))}
         </div>
 
-        {/* Lista */}
         {filtrados.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-2 py-16">
             <p className="text-gray-400 text-sm">No hay animales aquí</p>
@@ -68,19 +61,17 @@ export default function Animales() {
           </div>
         ) : (
           filtrados.map(animal => {
-            const { pesoIdeal, rendimiento, estado } = calcularIndicadores(animal)
+            const { pesoIdeal, rendimiento, estado, alerta } = calcularIndicadores(animal)
             return (
-              <button
-                key={animal.id}
-                onClick={() => navigate(`/animal/${animal.id}`)}
+              <button key={animal.id} onClick={() => navigate(`/animal/${animal.id}`)}
                 className="bg-gray-50 rounded-xl p-3 text-left w-full">
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <p className="text-sm font-medium text-gray-800">{animal.raza}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{animal.sexo} · {animal.sistema} {animal.lote ? `· ${animal.lote}` : ''}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{animal.sexo} · {animal.sistema} {animal.lote ? `· Lote ${animal.lote}` : ''}</p>
                   </div>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${estado === 'ok' ? 'bg-green-100 text-[#2d6a1f]' : estado === 'warn' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'}`}>
-                    {estado === 'ok' ? '✓ Óptimo' : estado === 'warn' ? '⚠ Atención' : '✕ Crítico'}
+                    {alerta}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
