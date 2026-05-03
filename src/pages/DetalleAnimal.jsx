@@ -2,22 +2,142 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { calcularIndicadores } from '../lib/calculos'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+import { Line } from 'react-chartjs-2'
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend)
+
+function GraficaPeso({ datos, pesoIdeal }) {
+  const labels = datos.map(d => d.label)
+  const pesos = datos.map(d => d.peso)
+  const ideales = datos.map(() => pesoIdeal)
+
+  const data = {
+    labels,
+    datasets: [
+      {
+        label: 'Peso real',
+        data: pesos,
+        borderColor: '#1a3a6b',
+        backgroundColor: '#1a3a6b',
+        borderWidth: 2,
+        pointRadius: 5,
+        pointBackgroundColor: '#1a3a6b',
+        tension: 0.3,
+      },
+      {
+        label: `Peso ideal (${pesoIdeal} kg)`,
+        data: ideales,
+        borderColor: '#f59e0b',
+        backgroundColor: '#f59e0b',
+        borderWidth: 1.5,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        tension: 0,
+      },
+    ],
+  }
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          font: { size: 11 },
+          color: '#6b7280',
+          boxWidth: 12,
+          padding: 12,
+        },
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} kg`,
+        },
+      },
+    },
+    scales: {
+      x: {
+        ticks: { font: { size: 10 }, color: '#9ca3af' },
+        grid: { color: '#f3f4f6' },
+      },
+      y: {
+        ticks: {
+          font: { size: 10 },
+          color: '#9ca3af',
+          callback: v => `${v} kg`,
+        },
+        grid: { color: '#f3f4f6' },
+      },
+    },
+  }
+
+  return (
+    <div style={{ height: 220 }}>
+      <Line data={data} options={options} />
+    </div>
+  )
+}
 
 export default function DetalleAnimal() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [animal, setAnimal] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [registros, setRegistros] = useState([])
+  const [nuevoPeso, setNuevoPeso] = useState('')
+  const [guardando, setGuardando] = useState(false)
+
+  const fetchAnimal = async () => {
+    const { data } = await supabase
+      .from('animales').select('*').eq('id', id).single()
+    setAnimal(data)
+    setLoading(false)
+  }
+
+  const fetchRegistros = async () => {
+    const { data } = await supabase
+      .from('registros_peso')
+      .select('*')
+      .eq('animal_id', id)
+      .order('fecha', { ascending: true })
+    setRegistros(data || [])
+  }
 
   useEffect(() => {
-    const fetchAnimal = async () => {
-      const { data } = await supabase
-        .from('animales').select('*').eq('id', id).single()
-      setAnimal(data)
-      setLoading(false)
-    }
     fetchAnimal()
+    fetchRegistros()
   }, [id])
+
+  const handleRegistrarPeso = async () => {
+    if (!nuevoPeso || isNaN(parseFloat(nuevoPeso))) return
+    setGuardando(true)
+    const peso = parseFloat(nuevoPeso)
+
+    await supabase.from('registros_peso').insert({
+      animal_id: id,
+      peso,
+      fecha: new Date().toISOString(),
+    })
+
+    await supabase.from('animales')
+      .update({ peso_actual: peso })
+      .eq('id', id)
+
+    setNuevoPeso('')
+    await fetchAnimal()
+    await fetchRegistros()
+    setGuardando(false)
+  }
 
   const handleEliminar = async () => {
     if (!confirm('¿Seguro que quieres eliminar este animal?')) return
@@ -42,6 +162,18 @@ export default function DetalleAnimal() {
     gananciaDia, gananciaMes, rendimiento,
     estado, estadoTexto, alerta, prioridad, recomendacion
   } = calcularIndicadores(animal)
+
+  const puntoInicial = {
+    peso: animal.peso_ingreso,
+    label: new Date(animal.fecha_ingreso).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }),
+  }
+
+  const puntosRegistros = registros.map(r => ({
+    peso: parseFloat(r.peso),
+    label: new Date(r.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }),
+  }))
+
+  const datosGrafica = [puntoInicial, ...puntosRegistros]
 
   return (
     <div className="flex-1 flex flex-col pb-16">
@@ -96,7 +228,84 @@ export default function DetalleAnimal() {
           )}
         </div>
 
-        {/* Indicadores del Excel */}
+        {/* Gráfica de trazabilidad */}
+        <div>
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">Trazabilidad de peso</p>
+          <div className="bg-gray-50 rounded-xl p-3">
+            {datosGrafica.length < 2 ? (
+              <p className="text-xs text-gray-400 text-center py-6">
+                Registra al menos un peso para ver la gráfica
+              </p>
+            ) : (
+              <GraficaPeso datos={datosGrafica} pesoIdeal={pesoIdeal} />
+            )}
+          </div>
+        </div>
+
+        {/* Registrar nuevo peso */}
+        <div>
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Registrar nuevo peso</p>
+          <div className="flex gap-2">
+            <input
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#1a3a6b]"
+              placeholder="Ej: 195"
+              type="number"
+              value={nuevoPeso}
+              onChange={e => setNuevoPeso(e.target.value)}
+            />
+            <button
+              onClick={handleRegistrarPeso}
+              disabled={guardando || !nuevoPeso}
+              className="bg-[#1a3a6b] text-white rounded-xl px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+            >
+              {guardando ? '...' : 'Guardar'}
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1 ml-1">
+            Se registra con la fecha de hoy — {new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+
+        {/* Historial */}
+        {registros.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Historial</p>
+            <div className="flex flex-col">
+              <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
+                <div>
+                  <p className="text-sm text-gray-600">Ingreso</p>
+                  <p className="text-[10px] text-gray-400">
+                    {new Date(animal.fecha_ingreso).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                <p className="text-sm font-medium text-gray-800">{animal.peso_ingreso} kg</p>
+              </div>
+              {registros.map((r, i) => {
+                const anterior = i === 0 ? animal.peso_ingreso : parseFloat(registros[i - 1].peso)
+                const diferencia = (parseFloat(r.peso) - anterior).toFixed(1)
+                const positivo = parseFloat(diferencia) >= 0
+                return (
+                  <div key={r.id} className="flex justify-between items-center py-2.5 border-b border-gray-100">
+                    <div>
+                      <p className="text-sm text-gray-600">Registro {i + 1}</p>
+                      <p className="text-[10px] text-gray-400">
+                        {new Date(r.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-800">{r.peso} kg</p>
+                      <p className={`text-[10px] font-medium ${positivo ? 'text-[#2d6a1f]' : 'text-red-500'}`}>
+                        {positivo ? '+' : ''}{diferencia} kg
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Indicadores productivos */}
         <div>
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Indicadores productivos</p>
           <div className="grid grid-cols-2 gap-2">
@@ -146,6 +355,7 @@ export default function DetalleAnimal() {
             Eliminar animal
           </button>
         </div>
+
       </div>
     </div>
   )
