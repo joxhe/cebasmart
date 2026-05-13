@@ -29,6 +29,8 @@ export default function Animales() {
     ? animales
     : filtro === 'Alertas'
     ? animales.filter(a => calcularIndicadores(a).estado !== 'ok')
+    : filtro === 'Vendidos'
+    ? animales.filter(a => a.vendido)
     : animales.filter(a => a.lote === filtro)
 
   if (loading) return (
@@ -46,7 +48,7 @@ export default function Animales() {
 
       <div className="flex-1 p-4 flex flex-col gap-3 overflow-y-auto">
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[...lotes, 'Alertas'].map(f => (
+          {[...lotes, 'Alertas', 'Vendidos'].map(f => (
             <button key={f} onClick={() => setFiltro(f)}
               className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap border transition-colors ${filtro === f ? 'bg-[#1a3a6b] text-white border-[#1a3a6b]' : 'bg-white text-gray-500 border-gray-200'}`}>
               {f}

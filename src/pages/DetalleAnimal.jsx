@@ -96,6 +96,12 @@ export default function DetalleAnimal() {
   const [registros, setRegistros] = useState([])
   const [nuevoPeso, setNuevoPeso] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [venta, setVenta] = useState({
+    precio_venta: animal?.precio_venta || '',
+    peso_venta: animal?.peso_venta || '',
+    fecha_venta: animal?.fecha_venta || '',
+  })
+  const [guardandoVenta, setGuardandoVenta] = useState(false)
 
   const fetchAnimal = async () => {
     const { data } = await supabase
@@ -111,6 +117,23 @@ export default function DetalleAnimal() {
       .eq('animal_id', id)
       .order('fecha', { ascending: true })
     setRegistros(data || [])
+  }
+
+  const handleRegistrarVenta = async () => {
+    if (!venta.precio_venta || !venta.peso_venta || !venta.fecha_venta) {
+      alert('Completa todos los campos de venta')
+      return
+    }
+    setGuardandoVenta(true)
+    const { error } = await supabase.from('animales').update({
+      precio_venta: parseFloat(venta.precio_venta),
+      peso_venta: parseFloat(venta.peso_venta),
+      fecha_venta: venta.fecha_venta,
+      vendido: true
+    }).eq('id', id)
+    setGuardandoVenta(false)
+    if (error) { alert('Error al guardar venta: ' + error.message); return }
+    await fetchAnimal()
   }
 
   useEffect(() => {
@@ -323,6 +346,67 @@ export default function DetalleAnimal() {
           </div>
         </div>
 
+        {/* Registro de venta y tabla de rendimiento */}
+        <div className="mt-4">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Rendimiento económico</p>
+          {animal.vendido ? (
+            <div className="bg-green-50 rounded-xl p-3 flex flex-col gap-2">
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500">Precio compra</span>
+                <span className="text-sm font-medium text-gray-800">${animal.precio_compra?.toLocaleString() ?? '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500">Precio venta</span>
+                <span className="text-sm font-medium text-gray-800">${animal.precio_venta?.toLocaleString() ?? '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500">Peso ingreso</span>
+                <span className="text-sm font-medium text-gray-800">{animal.peso_ingreso} kg</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500">Peso venta</span>
+                <span className="text-sm font-medium text-gray-800">{animal.peso_venta} kg</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500">Kilos ganados</span>
+                <span className="text-sm font-medium text-[#2d6a1f]">{(animal.peso_venta - animal.peso_ingreso).toFixed(1)} kg</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500">Utilidad</span>
+                <span className="text-sm font-medium text-[#2d6a1f]">${(animal.precio_venta - animal.precio_compra).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500">Fecha venta</span>
+                <span className="text-sm font-medium text-gray-800">{animal.fecha_venta ? new Date(animal.fecha_venta).toLocaleDateString('es-CO') : '—'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-yellow-50 rounded-xl p-3 flex flex-col gap-2">
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-500">Precio venta ($)</label>
+                  <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a3a6b]"
+                    type="number" value={venta.precio_venta} onChange={e => setVenta(v => ({ ...v, precio_venta: e.target.value }))} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-500">Peso venta (kg)</label>
+                  <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a3a6b]"
+                    type="number" value={venta.peso_venta} onChange={e => setVenta(v => ({ ...v, peso_venta: e.target.value }))} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-500">Fecha venta</label>
+                  <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a3a6b]"
+                    type="date" value={venta.fecha_venta} onChange={e => setVenta(v => ({ ...v, fecha_venta: e.target.value }))} />
+                </div>
+              </div>
+              <button onClick={handleRegistrarVenta} disabled={guardandoVenta}
+                className="bg-[#2d6a1f] text-white rounded-xl py-2 text-sm font-medium disabled:opacity-60">
+                {guardandoVenta ? 'Guardando...' : 'Registrar venta'}
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Info general */}
         <div>
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Información</p>
@@ -330,6 +414,7 @@ export default function DetalleAnimal() {
             {[
               { label: 'Edad', value: `${animal.edad_meses} meses` },
               { label: 'Peso de ingreso', value: `${animal.peso_ingreso} kg` },
+              { label: 'Precio de compra', value: `$${animal.precio_compra?.toLocaleString() ?? '—'}` },
               { label: 'Fecha de ingreso', value: animal.fecha_ingreso ? new Date(animal.fecha_ingreso).toLocaleDateString('es-CO') : '—' },
               { label: 'Potrero', value: animal.potrero || '—' },
               { label: 'Cambio de potrero', value: animal.cambio_potrero || '—', color: animal.cambio_potrero === 'Mejorar' ? 'text-amber-600' : animal.cambio_potrero === 'Mantener' ? 'text-[#2d6a1f]' : 'text-gray-800' },

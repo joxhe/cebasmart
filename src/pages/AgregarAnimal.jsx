@@ -19,6 +19,7 @@ export default function AgregarAnimal() {
     peso_ingreso: '',
     peso_actual: '',
     edad_meses: '',
+    precio_compra: '',
     vacunas: false,
     ultimo_tratamiento: '',
   })
@@ -30,8 +31,8 @@ export default function AgregarAnimal() {
     : null
 
   const handleGuardar = async () => {
-    if (!form.raza || !form.peso_ingreso || !form.peso_actual || !form.edad_meses) {
-      alert('Raza, edad, peso de ingreso y peso actual son obligatorios')
+    if (!form.raza || !form.peso_ingreso || !form.peso_actual || !form.edad_meses || !form.precio_compra) {
+      alert('Raza, edad, peso de ingreso, peso actual y precio de compra son obligatorios')
       return
     }
     setLoading(true)
@@ -47,6 +48,7 @@ export default function AgregarAnimal() {
       peso_ingreso: parseFloat(form.peso_ingreso),
       peso_actual: parseFloat(form.peso_actual),
       edad_meses: parseInt(form.edad_meses),
+      precio_compra: parseFloat(form.precio_compra),
       vacunas: form.vacunas,
       ultimo_tratamiento: form.ultimo_tratamiento || null,
     })
@@ -104,7 +106,7 @@ export default function AgregarAnimal() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-gray-500">Peso ingreso (kg)</label>
             <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a3a6b]"
@@ -114,6 +116,11 @@ export default function AgregarAnimal() {
             <label className="text-xs text-gray-500">Peso actual (kg)</label>
             <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a3a6b]"
               placeholder="Ej: 180" type="number" value={form.peso_actual} onChange={e => set('peso_actual', e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Precio de compra ($)</label>
+            <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a3a6b]"
+              placeholder="Ej: 1200000" type="number" value={form.precio_compra} onChange={e => set('precio_compra', e.target.value)} />
           </div>
         </div>
 
