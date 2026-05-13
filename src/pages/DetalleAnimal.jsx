@@ -8,12 +8,13 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Tooltip,
   Legend,
 } from 'chart.js'
-import { Line } from 'react-chartjs-2'
+import { Line, Bar } from 'react-chartjs-2'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend)
 
 function GraficaPeso({ datos, pesoIdeal }) {
   const labels = datos.map(d => d.label)
@@ -84,6 +85,56 @@ function GraficaPeso({ datos, pesoIdeal }) {
   return (
     <div style={{ height: 220 }}>
       <Line data={data} options={options} />
+    </div>
+  )
+}
+
+function GraficaPrecios({ compra, venta }) {
+  const data = {
+    labels: ['Compra', 'Venta'],
+    datasets: [
+      {
+        label: 'Precio ($)',
+        data: [compra || 0, venta || 0],
+        backgroundColor: ['#166534', '#4ade80'],
+        borderColor: ['#14532d', '#15803d'],
+        borderWidth: 1,
+      },
+    ],
+  }
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => `$${ctx.parsed.y?.toLocaleString()}`,
+        },
+      },
+    },
+    scales: {
+      x: {
+        ticks: { color: '#4b5563', font: { size: 11 } },
+        grid: { display: false },
+      },
+      y: {
+        ticks: {
+          color: '#4b5563',
+          font: { size: 11 },
+          callback: value => `$${value}`,
+        },
+        grid: { color: '#e5e7eb' },
+      },
+    },
+  }
+
+  return (
+    <div style={{ height: 240 }}>
+      <Bar data={data} options={options} />
     </div>
   )
 }
@@ -349,40 +400,51 @@ export default function DetalleAnimal() {
         {/* Registro de venta y tabla de rendimiento */}
         <div className="mt-4">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Rendimiento económico</p>
-          {animal.vendido ? (
-            <div className="bg-green-50 rounded-xl p-3 flex flex-col gap-2">
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Precio compra</span>
-                <span className="text-sm font-medium text-gray-800">${animal.precio_compra?.toLocaleString() ?? '—'}</span>
+          <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
+            <div className="grid grid-cols-2 gap-2 bg-gray-100 px-4 py-3 text-xs font-semibold text-gray-600">
+              <span>Concepto</span>
+              <span className="text-right">Valor</span>
+            </div>
+            <div className="divide-y divide-gray-200">
+              <div className="grid grid-cols-2 gap-2 px-4 py-3 text-sm text-gray-800">
+                <span>Precio de compra</span>
+                <span className="text-right">${animal.precio_compra?.toLocaleString() ?? '—'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Precio venta</span>
-                <span className="text-sm font-medium text-gray-800">${animal.precio_venta?.toLocaleString() ?? '—'}</span>
+              <div className="grid grid-cols-2 gap-2 px-4 py-3 text-sm text-gray-800">
+                <span>Precio de venta</span>
+                <span className="text-right">${animal.precio_venta?.toLocaleString() ?? '—'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Peso ingreso</span>
-                <span className="text-sm font-medium text-gray-800">{animal.peso_ingreso} kg</span>
+              <div className="grid grid-cols-2 gap-2 px-4 py-3 text-sm text-gray-800">
+                <span>Peso de ingreso</span>
+                <span className="text-right">{animal.peso_ingreso} kg</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Peso venta</span>
-                <span className="text-sm font-medium text-gray-800">{animal.peso_venta} kg</span>
+              <div className="grid grid-cols-2 gap-2 px-4 py-3 text-sm text-gray-800">
+                <span>Peso de venta</span>
+                <span className="text-right">{animal.peso_venta ?? '—'} kg</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Kilos ganados</span>
-                <span className="text-sm font-medium text-[#2d6a1f]">{(animal.peso_venta - animal.peso_ingreso).toFixed(1)} kg</span>
+              <div className="grid grid-cols-2 gap-2 px-4 py-3 text-sm text-[#166534]">
+                <span>Kilos ganados</span>
+                <span className="text-right">{animal.peso_venta ? `${(animal.peso_venta - animal.peso_ingreso).toFixed(1)} kg` : '—'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Utilidad</span>
-                <span className="text-sm font-medium text-[#2d6a1f]">${(animal.precio_venta - animal.precio_compra).toLocaleString()}</span>
+              <div className="grid grid-cols-2 gap-2 px-4 py-3 text-sm text-[#166534]">
+                <span>Utilidad</span>
+                <span className="text-right">{animal.precio_venta ? `$${(animal.precio_venta - animal.precio_compra).toLocaleString()}` : '—'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Fecha venta</span>
-                <span className="text-sm font-medium text-gray-800">{animal.fecha_venta ? new Date(animal.fecha_venta).toLocaleDateString('es-CO') : '—'}</span>
+              <div className="grid grid-cols-2 gap-2 px-4 py-3 text-sm text-gray-800">
+                <span>Fecha venta</span>
+                <span className="text-right">{animal.fecha_venta ? new Date(animal.fecha_venta).toLocaleDateString('es-CO') : '—'}</span>
               </div>
             </div>
-          ) : (
-            <div className="bg-yellow-50 rounded-xl p-3 flex flex-col gap-2">
-              <div className="grid grid-cols-3 gap-2 mb-2">
+          </div>
+
+          <div className="rounded-xl border border-green-200 bg-white p-3 mt-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Precio de compra vs precio de venta</p>
+            <GraficaPrecios compra={animal.precio_compra} venta={animal.precio_venta || 0} />
+          </div>
+
+          {!animal.vendido && (
+            <div className="bg-yellow-50 rounded-xl p-3 mt-4">
+              <div className="grid grid-cols-3 gap-2 mb-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-500">Precio venta ($)</label>
                   <input className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a3a6b]"
