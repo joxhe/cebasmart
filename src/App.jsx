@@ -9,6 +9,7 @@ import Animales from './pages/Animales'
 import AgregarAnimal from './pages/AgregarAnimal'
 import DetalleAnimal from './pages/DetalleAnimal'
 import Perfil from './pages/Perfil'
+import DetalleLote from './pages/DetalleLote'
 import Navbar from './components/Navbar'
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
           <Route path="/agregar" element={<AgregarAnimal />} />
           <Route path="/animal/:id" element={<DetalleAnimal />} />
           <Route path="/perfil" element={<Perfil />} />
+          <Route path="/lote/:nombre" element={<DetalleLote />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
         <Navbar />
